@@ -1,7 +1,17 @@
 import axios from 'axios';
 
+// Dynamically set API base URL based on environment
+const getBaseUrl = () => {
+  // If the app is running on Vercel or any non-localhost domain, use the live Render backend
+  if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return 'https://new-image-backend.onrender.com/api/';
+  }
+  // Otherwise, default to local development
+  return 'http://127.0.0.1:8000/api/';
+};
+
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api/',
+  baseURL: getBaseUrl(),
 });
 
 let isRefreshing = false;
@@ -58,7 +68,9 @@ api.interceptors.response.use(
           throw new Error('No refresh token available');
         }
 
-        const res = await axios.post('http://127.0.0.1:8000/api/token/refresh/', {
+        // Use the same dynamic base URL resolution for token refreshing
+        const refreshBase = getBaseUrl().replace('/api/', '');
+        const res = await axios.post(`${refreshBase}/api/token/refresh/`, {
           refresh: refreshToken
         });
 
