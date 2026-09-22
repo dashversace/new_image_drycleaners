@@ -9,6 +9,11 @@ export default function ReceiptModal({ order, onClose }) {
   const isOverpaid = paid > total;
   const changeAmount = isOverpaid ? paid - total : 0;
 
+  // Extract discount if it was saved in special instructions
+  const discountMatch = order.special_instructions?.match(/\[Discount Applied: \$([\d.]+)\]/);
+  const discountAmount = discountMatch ? Number(discountMatch[1]) : 0;
+  const subtotalAmount = total + discountAmount;
+
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-2xl max-w-md w-full overflow-hidden flex flex-col">
@@ -67,11 +72,24 @@ export default function ReceiptModal({ order, onClose }) {
             </table>
 
             <div className="space-y-1 border-t pt-2">
-              <div className="flex justify-between font-bold">
-                <span>Total Amount:</span>
+              {discountAmount > 0 && (
+                <>
+                  <div className="flex justify-between">
+                    <span>Subtotal:</span>
+                    <span>${subtotalAmount.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-emerald-700 font-medium">
+                    <span>Discount Applied:</span>
+                    <span>-${discountAmount.toFixed(2)}</span>
+                  </div>
+                </>
+              )}
+
+              <div className="flex justify-between font-bold text-sm border-t pt-1">
+                <span>Final Total:</span>
                 <span>${total.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between pt-1">
                 <span>Paid Amount:</span>
                 <span>${paid.toFixed(2)}</span>
               </div>
@@ -92,7 +110,7 @@ export default function ReceiptModal({ order, onClose }) {
             {order.special_instructions && (
               <div className="mt-2 border-t pt-2">
                 <p className="font-bold">Special Instructions:</p>
-                <p className="italic">{order.special_instructions}</p>
+                <p className="italic">{order.special_instructions.replace(/\[Discount Applied: \$[\d.]+\]/g, '').trim()}</p>
               </div>
             )}
 

@@ -16,6 +16,7 @@ export default function NewOrder() {
   const [items, setItems] = useState([{ service: '', quantity: 1, unit_price: '' }]);
   const [collectionDate, setCollectionDate] = useState('');
   const [specialInstructions, setSpecialInstructions] = useState('');
+  const [discount, setDiscount] = useState('');
   const [initialPayment, setInitialPayment] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [referenceNumber, setReferenceNumber] = useState('');
@@ -28,7 +29,6 @@ export default function NewOrder() {
       .then(res => {
         const data = res.data;
         const list = Array.isArray(data) ? data : (data.results || data.services || []);
-        // Filter active services or fallback to all if is_active isn't explicitly set
         const active = list.filter(s => s.is_active !== false);
         setServices(active);
         setLoadingServices(false);
@@ -60,13 +60,17 @@ export default function NewOrder() {
     setItems(newItems);
   };
 
-  const calculateTotal = () => {
+  const calculateSubtotal = () => {
     return items.reduce((acc, curr) => {
       const s = services.find(srv => srv.id == curr.service);
       const price = curr.unit_price !== '' && curr.unit_price !== undefined ? Number(curr.unit_price) : (s ? Number(s.price) : 0);
       return acc + (price * Number(curr.quantity || 1));
     }, 0);
   };
+
+  const subtotal = calculateSubtotal();
+  const numericDiscount = discount !== '' && !isNaN(discount) ? Number(discount) : 0;
+  const finalTotal = Math.max(0, subtotal - numericDiscount);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -96,6 +100,7 @@ export default function NewOrder() {
         items: formattedItems,
         collection_date: collectionDate,
         special_instructions: specialInstructions || '',
+        discount: numericDiscount,
         initial_payment: initialPayment ? Number(initialPayment) : 0,
         payment_method: paymentMethod,
         reference_number: referenceNumber || ''
@@ -238,9 +243,27 @@ export default function NewOrder() {
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Calculated Total</label>
-            <div className="text-xl font-black text-slate-800 py-2">${calculateTotal().toFixed(2)}</div>
+          <div className="bg-slate-50 p-3 rounded border border-slate-200 space-y-1">
+            <div className="flex justify-between text-xs text-slate-600">
+              <span>Subtotal:</span>
+              <span className="font-mono">${subtotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold uppercase text-slate-600">Discount ($):</span>
+              <input 
+                type="number" 
+                step="0.01" 
+                min="0"
+                placeholder="0.00"
+                value={discount}
+                onChange={e => setDiscount(e.target.value)}
+                className="w-28 border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none focus:border-sky-600 font-bold bg-white text-right font-mono"
+              />
+            </div>
+            <div className="flex justify-between items-center pt-2 border-t font-black text-slate-800 text-base">
+              <span>Final Total:</span>
+              <span className="text-sky-700 font-mono">${finalTotal.toFixed(2)}</span>
+            </div>
           </div>
         </div>
 

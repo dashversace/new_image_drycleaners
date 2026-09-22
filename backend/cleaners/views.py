@@ -127,6 +127,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         items_data = data.get('items', [])
         special_instructions = data.get('special_instructions', '')
         collection_date = data.get('collection_date')
+        discount = float(data.get('discount', 0))
 
         if not customer_id or not items_data or not collection_date:
             return Response({"error": "Missing required fields."}, status=status.HTTP_400_BAD_REQUEST)
@@ -165,7 +166,17 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
             total += order_item.subtotal
 
-        order.total_amount = total
+        # Apply discount and finalize total amount
+        final_total = max(0, total - discount)
+        order.total_amount = final_total
+
+        if discount > 0:
+            discount_note = f"[Discount Applied: ${discount:.2f}]"
+            if order.special_instructions:
+                order.special_instructions = f"{discount_note} {order.special_instructions}"
+            else:
+                order.special_instructions = discount_note
+
         order.save()
 
         StatusHistory.objects.create(order=order, status='RECEIVED', changed_by=request.user)
@@ -183,7 +194,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             order.paid_amount += pay_amount
             order.save()
 
-        log_audit(request.user, "CREATE_ORDER", f"Created order {order.order_number} for {customer.name}", request)
+        log_audit(request.user, "CREATE_ORDER", f"Created order {order.order_number} for {customer.name} with discount ${discount}", request)
         serializer = self.get_serializer(order)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
